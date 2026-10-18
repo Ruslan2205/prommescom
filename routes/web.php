@@ -4,6 +4,8 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\BomController;
+
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -14,9 +16,16 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Маршрут для отображения страницы
+Route::get('/dashboard', [BomController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
+
+// Маршрут для сохранения дерева (POST-запрос)
+Route::post('/bom/save', [BomController::class, 'save'])
+    ->middleware(['auth'])
+    ->name('bom.save');
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

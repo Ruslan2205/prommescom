@@ -1,68 +1,58 @@
-<!-- @refresh reload -->
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
-import { ref } from 'vue';
-import NestedComponent from './NestedComponent.vue'; // Импортируем наш рекурсивный список
+import { Head, router } from '@inertiajs/vue3';
+import { ref, watch } from 'vue'; // ✅ Добавили watch
+import NestedComponent from './NestedComponent.vue';
 
-// Древовидная структура данных вашей MES (Дерево спецификации / BOM)
-// Каждый элемент имеет свойство 'unit' для корректной работы выпадающего списка
-const bomTree = ref([
-    {
-        id: 1,
-        name: 'Корпус редуктора в сборе',
-        unit: 'шт',
-        quantity: 1,
-        children: [
-            { id: 11, name: 'Литой корпус (основание)', unit: 'шт', quantity: 1, children: [] },
-            { id: 12, name: 'Крышка верхняя', unit: 'шт', quantity: 1, children: [] },
-            { id: 13, name: 'Краска защитная (серая)', unit: 'л', quantity: 0.35, children: [] }
-        ]
-    },
-    {
-        id: 2,
-        name: 'Вал ведущий в сборе',
-        unit: 'шт',
-        quantity: 1,
-        children: [
-            { id: 21, name: 'Вал шестерня главная', unit: 'шт', quantity: 1, children: [] },
-            {
-                id: 22,
-                name: 'Подшипниковый узел',
-                unit: 'шт',
-                quantity: 2,
-                children: [
-                    { id: 221, name: 'Ролик подшипника', unit: 'шт', quantity: 14, children: [] },
-                    { id: 222, name: 'Сепаратор латунный', unit: 'шт', quantity: 1, children: [] },
-                    { id: 223, name: 'Смазка технологическая Литол-24', unit: 'г', quantity: 45, children: [] }
-                ]
-            }
-        ]
-    },
-    {
-        id: 3,
-        name: 'Электропроводка и крепеж',
-        unit: 'шт',
-        quantity: 1,
-        children: [
-            { id: 31, name: 'Болт крепежный М10х45', unit: 'шт', quantity: 12, children: [] },
-            { id: 32, name: 'Провод медный заземления ПВАМ', unit: 'м', quantity: 1.85, children: [] }
-        ]
-    }
-]);
+const props = defineProps({
+    bomTree: { type: Array, default: () => [] }
+});
 
-// Функция добавления элемента на самый верхний (корневой) уровень спецификации
+const tree = ref(props.bomTree);
+
+// Функция сохранения
+
+const saveTree = () => {
+    // Рекурсивная функция, которая берет данные из vuedraggable и собирает чистое дерево
+    const buildCleanTree = (items) => {
+        if (!items || !Array.isArray(items)) return [];
+        return items.map(item => ({
+            name: item.name,
+            unit: item.unit,
+            quantity: item.quantity,
+            // Рекурсивно вызываем сборку для детей
+            children: buildCleanTree(item.children)
+        }));
+    };
+
+    const cleanTree = buildCleanTree(tree.value);
+
+    // Проверим в консоли, что дети на месте
+    console.log('Отправляем на сервер:', cleanTree);
+
+    router.post('/bom/save', { tree: cleanTree }, {
+        preserveScroll: true,
+    });
+};
+
+
+
+
+// Функция добавления корневого элемента
 const addRootItem = () => {
-    const newId = Date.now();
-    bomTree.value.push({
+    const newId = crypto.randomUUID?.() ?? Date.now() + Math.random();
+    tree.value.push({
         id: newId,
-        name: 'Новая корневая сборка #' + String(newId).slice(-4),
+        name: 'Новая сборка #' + String(newId).slice(-4),
         unit: 'шт',
         quantity: 1,
         children: []
     });
+    // watch сам вызовет saveTree, но можно вызвать и явно для надежности
+    saveTree();
 };
 </script>
+
 
 <template>
     <Head title="Dashboard" />
@@ -86,7 +76,7 @@ const addRootItem = () => {
 
                             <div class="card-body bg-white">
                                 <p class="text-muted small mb-4">
-                                    Вы можете перетаскивать детали вверх/вниз, а также **затаскивать их внутрь других деталей**, создавая подуровни сборки.
+                                    Вы можете перетаскивать детали вверх/вниз, а также затаскивать их внутрь других деталей, создавая подуровни сборки.
                                 </p>
 
                                 <!-- Кнопка добавления корневого элемента -->
@@ -98,7 +88,7 @@ const addRootItem = () => {
 
                                 <!-- Корневой вызов нашего рекурсивного компонента -->
                                 <div class="nested-tree-wrapper">
-                                    <NestedComponent :tasks="bomTree" />
+                                    <NestedComponent :tasks="tree" @tree-changed="saveTree" />
                                 </div>
 
                             </div>

@@ -1,7 +1,8 @@
 <template>
     <draggable
-        class="drag-area list-group"
         :list="tasks"
+        @end="emit('tree-changed')"
+        class="drag-area list-group"
         group="bom-tree"
         item-key="id"
         handle=".handle"
@@ -54,7 +55,10 @@
 
                 <!-- Дочерняя зона: ВСЕГДА видна, даже если пустая -->
                 <div class="nested-wrapper ms-3">
-                    <nested-component :tasks="element.children" />
+                    <nested-component
+                        :tasks="element.children"
+                        @tree-changed="emit('tree-changed')"
+                    />
                 </div>
             </li>
         </template>
@@ -69,6 +73,9 @@ const props = defineProps({
     tasks: { type: Array, required: true }
 });
 
+const emit = defineEmits(['tree-changed']);
+
+// Используем toRef, чтобы v-model мог безопасно обновлять массив, переданный из родителя
 const tasksRef = toRef(props, 'tasks');
 const expandedElements = ref([]);
 
@@ -83,31 +90,35 @@ const isExpanded = (id) => expandedElements.value.includes(id);
 const addChildItem = (parentElement) => {
     if (!parentElement.children) parentElement.children = [];
     const newId = crypto.randomUUID?.() ?? Date.now() + Math.random();
+
     parentElement.children.push({
         id: newId,
         name: 'Новый компонент #' + String(newId).slice(-4),
         unit: 'шт', quantity: 1, children: []
     });
+
     if (!expandedElements.value.includes(parentElement.id)) {
         expandedElements.value.push(parentElement.id);
     }
+
+    emit('tree-changed'); // Отправляем данные наверх для сохранения
 };
 
 const removeItem = (index) => {
     if (confirm('Удалить этот элемент и все его вложенные поддетали?')) {
         tasksRef.value.splice(index, 1);
+        emit('tree-changed');
     }
 };
 
 const onUnitChange = (element) => {
-    console.log(`ID ${element.id}: единица ${element.unit}`);
+    emit('tree-changed');
 };
 </script>
 
 <style scoped>
 .tree-node { display: block; }
 
-/* ✅ Ключевое: делаем зону сброса ВЫСОКОЙ и всегда присутствующей */
 .drag-area {
     min-height: 50px;
     padding: 4px 0 8px 0;
@@ -125,7 +136,6 @@ const onUnitChange = (element) => {
     flex-shrink: 0;
 }
 
-/* Подсветка контейнера при наведении во время drag */
 .drag-area:hover {
     background-color: rgba(13, 110, 253, 0.04);
     border-radius: 6px;
