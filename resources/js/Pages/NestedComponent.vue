@@ -10,58 +10,55 @@
         ghost-class="sortable-ghost"
         :empty-insert-threshold="40"
     >
-        <template #item="{ element, index }">
-            <li class="list-group-item border-0 ps-0 pb-1 tree-node">
+        <template #item="{ element, index }"><div class="list-group-item border-0 ps-0 pb-1 tree-node">
+            <!-- Плашка элемента -->
+            <div class="d-flex justify-content-between align-items-center bg-light p-2 rounded border shadow-xs mb-1">
+                <div class="d-flex align-items-center flex-grow-1 min-w-0">
+                    <button
+                        v-if="element.children && element.children.length > 0"
+                        @click="toggleExpand(element.id)"
+                        class="btn btn-sm btn-link text-decoration-none p-0 me-2 text-dark fw-bold fs-5"
+                    >
+                        {{ isExpanded(element.id) ? '▼' : '▶' }}
+                    </button>
+                    <span v-else class="me-4"></span>
 
-                <!-- Плашка элемента -->
-                <div class="d-flex justify-content-between align-items-center bg-light p-2 rounded border shadow-xs mb-1">
-                    <div class="d-flex align-items-center flex-grow-1 min-w-0">
-                        <button
-                            v-if="element.children && element.children.length > 0"
-                            @click="toggleExpand(element.id)"
-                            class="btn btn-sm btn-link text-decoration-none p-0 me-2 text-dark fw-bold fs-5"
-                        >
-                            {{ isExpanded(element.id) ? '▼' : '▶' }}
-                        </button>
-                        <span v-else class="me-4"></span>
-
-                        <span class="handle me-2 text-secondary fs-5" style="cursor: grab;">☰</span>
-                        <strong class="fs-6 text-truncate" :title="element.name">{{ element.name }}</strong>
-                    </div>
-
-                    <div class="action-column d-flex align-items-center justify-content-end ms-3 gap-2">
-                        <input
-                            type="number"
-                            v-model.number="element.quantity"
-                            class="form-control form-control-sm text-center fw-bold px-1 rounded-start"
-                            min="0" step="any" style="max-width: 75px;"
-                        >
-                        <select
-                            v-model="element.unit"
-                            class="form-select form-select-sm font-monospace border-start-0 bg-white"
-                            style="width: 75px; font-size: 0.8rem;"
-                            @change="onUnitChange(element)"
-                        >
-                            <option value="шт">шт</option>
-                            <option value="кг">кг</option>
-                            <option value="г">г</option>
-                            <option value="л">л</option>
-                            <option value="м">м</option>
-                        </select>
-                        <button @click="addChildItem(element)" class="btn btn-sm btn-outline-success px-2" title="Добавить поддеталь внутрь">+</button>
-                        <button @click="removeItem(index)" class="btn btn-sm btn-outline-danger px-2" title="Удалить">&times;</button>
-                    </div>
+                    <span class="handle me-2 text-secondary fs-5" style="cursor: grab;">☰</span>
+                    <strong class="fs-6 text-truncate" :title="element.name">{{ element.name }}</strong>
                 </div>
 
-                <!-- Дочерняя зона: ВСЕГДА видна, даже если пустая -->
-                <div class="nested-wrapper ms-3">
-                    <nested-component
-                        :tasks="element.children"
-                        @tree-changed="emit('tree-changed')"
-                    />
+                <div class="action-column d-flex align-items-center justify-content-end ms-3 gap-2">
+                    <input
+                        type="number"
+                        v-model.number="element.quantity"
+                        class="form-control form-control-sm text-center fw-bold px-1 rounded-start"
+                        min="0" step="any" style="max-width: 75px;"
+                    >
+                    <select
+                        v-model="element.unit"
+                        class="form-select form-select-sm font-monospace border-start-0 bg-white"
+                        style="width: 75px; font-size: 0.8rem;"
+                        @change="onUnitChange(element)"
+                    >
+                        <option value="шт">шт</option>
+                        <option value="кг">кг</option>
+                        <option value="г">г</option>
+                        <option value="л">л</option>
+                        <option value="м">м</option>
+                    </select>
+                    <button @click="addChildItem(element)" class="btn btn-sm btn-outline-success px-2" title="Добавить поддеталь внутрь">+</button>
+                    <button @click="removeItem(index)" class="btn btn-sm btn-outline-danger px-2" title="Удалить">&times;</button>
                 </div>
-            </li>
-        </template>
+            </div>
+
+            <!-- Дочерняя зона: ВСЕГДА видна, даже если пустая -->
+            <div v-if="isExpanded(element.id)" class="nested-wrapper ms-3">
+                <nested-component
+                    :tasks="element.children"
+                    @tree-changed="emit('tree-changed')"
+                />
+            </div>
+        </div></template>
     </draggable>
 </template>
 
@@ -80,6 +77,7 @@ const tasksRef = toRef(props, 'tasks');
 const expandedElements = ref([]);
 
 const toggleExpand = (id) => {
+    console.log('Клик по стрелочке! ID:', id); // ✅ Отладка
     const i = expandedElements.value.indexOf(id);
     if (i === -1) expandedElements.value.push(id);
     else expandedElements.value.splice(i, 1);
