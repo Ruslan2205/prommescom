@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Item; // В самом верху файла
 use App\Models\BomItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,12 +18,14 @@ class BomController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        //  ПРИНУДИТЕЛЬНО превращаем коллекции Laravel в обычные массивы
-        // и гарантируем, что у каждого элемента есть массив children (даже если он пустой)
         $formattedTree = $this->formatTree($tree);
 
+        // ✅ Достаем справочник и сортируем по имени
+        $catalogItems = Item::orderBy('name')->get();
+
         return Inertia::render('Dashboard', [
-            'bomTree' => $formattedTree
+            'bomTree' => $formattedTree,
+            'catalogItems' => $catalogItems // Передаем во Vue
         ]);
     }
 
