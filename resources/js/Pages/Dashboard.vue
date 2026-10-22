@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
-import { ref, watch, computed } from 'vue'; // ✅ Добавили computed
+import { ref, computed } from 'vue'; // ✅ computed для поиска
 import NestedComponent from './NestedComponent.vue';
 
 const props = defineProps({
@@ -9,13 +9,24 @@ const props = defineProps({
     catalogItems: { type: Array, default: () => [] } // ✅ Принимаем справочник
 });
 
-console.log('Данные справочника пришли:', props.catalogItems);
-
 const tree = ref(props.bomTree);
 
 // --- Логика справочника ---
 const isCatalogOpen = ref(false);
 const catalogSearch = ref('');
+const targetParentId = ref(null); // ✅ ID родителя (null = добавление в корень)
+
+// Функция открытия справочника для корня
+const openCatalogForRoot = () => {
+    targetParentId.value = null; // Добавляем в корень
+    isCatalogOpen.value = true;
+};
+
+// Функция открытия справочника для конкретного элемента (вызывается из NestedComponent)
+const openCatalogForChild = (parentId) => {
+    targetParentId.value = parentId; // Запоминаем, куда добавлять
+    isCatalogOpen.value = true;
+};
 
 // Фильтр для поиска
 const filteredCatalog = computed(() => {
@@ -25,32 +36,50 @@ const filteredCatalog = computed(() => {
     );
 });
 
-// Добавление выбранной детали из справочника в КОРЕНЬ
+// Функция добавления выбранной детали
 const addFromCatalog = (item) => {
     const newId = crypto.randomUUID?.() ?? Date.now() + Math.random();
-    tree.value.push({
+    const newItem = {
         id: newId,
         name: item.name,
         unit: item.unit,
         quantity: 1,
         children: []
-    });
-    isCatalogOpen.value = false; // Закрываем окно
-    catalogSearch.value = '';    // Очищаем поиск
-    saveTree();                  // Сохраняем
-};
-// -------------------------
+    };
 
-// Функция сохранения
+    if (targetParentId.value === null) {
+        // Добавляем в корень
+        tree.value.push(newItem);
+    } else {
+        // Ищем родителя в дереве и добавляем ему в children
+        const findAndAdd = (items) => {
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].id === targetParentId.value) {
+                    items[i].children.push(newItem);
+                    return true;
+                }
+                if (items[i].children && findAndAdd(items[i].children)) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        findAndAdd(tree.value);
+    }
+
+    isCatalogOpen.value = false;
+    catalogSearch.value = '';
+    saveTree();
+};
+
+// --- Сохранение ---
 const saveTree = () => {
-    // Рекурсивная функция, которая берет данные из vuedraggable и собирает чистое дерево
     const buildCleanTree = (items) => {
         if (!items || !Array.isArray(items)) return [];
         return items.map(item => ({
             name: item.name,
             unit: item.unit,
             quantity: item.quantity,
-            // Рекурсивно вызываем сборку для детей
             children: buildCleanTree(item.children)
         }));
     };
@@ -62,7 +91,7 @@ const saveTree = () => {
     });
 };
 
-// Функция добавления пустого корневого элемента
+// --- Добавление пустого корневого элемента ---
 const addRootItem = () => {
     const newId = crypto.randomUUID?.() ?? Date.now() + Math.random();
     tree.value.push({
@@ -103,7 +132,7 @@ const addRootItem = () => {
 
                                 <!-- Кнопки добавления -->
                                 <div class="mb-3 text-end">
-                                    <button @click="isCatalogOpen = true" class="btn btn-sm btn-success fw-bold shadow-sm me-2">
+                                    <button @click="openCatalogForRoot" class="btn btn-sm btn-success fw-bold shadow-sm me-2">
                                         📦 Добавить из справочника
                                     </button>
                                     <button @click="addRootItem" class="btn btn-sm btn-dark fw-bold shadow-sm">
@@ -113,7 +142,11 @@ const addRootItem = () => {
 
                                 <!-- Корневой вызов рекурсивного компонента -->
                                 <div class="nested-tree-wrapper">
-                                    <NestedComponent :tasks="tree" @tree-changed="saveTree" />
+                                    <NestedComponent
+                                        :tasks="tree"
+                                        @tree-changed="saveTree"
+                                        @open-catalog="openCatalogForChild"
+                                    />
                                 </div>
 
                             </div>

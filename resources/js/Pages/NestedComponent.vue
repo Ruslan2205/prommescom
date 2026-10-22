@@ -56,6 +56,7 @@
                 <nested-component
                     :tasks="element.children"
                     @tree-changed="emit('tree-changed')"
+                    @open-catalog="emit('open-catalog', $event)"
                 />
             </div>
         </div></template>
@@ -70,14 +71,12 @@ const props = defineProps({
     tasks: { type: Array, required: true }
 });
 
-const emit = defineEmits(['tree-changed']);
+const emit = defineEmits(['tree-changed', 'open-catalog']); // ✅ Добавили open-catalog
 
-// Используем toRef, чтобы v-model мог безопасно обновлять массив, переданный из родителя
 const tasksRef = toRef(props, 'tasks');
 const expandedElements = ref([]);
 
 const toggleExpand = (id) => {
-    console.log('Клик по стрелочке! ID:', id); // ✅ Отладка
     const i = expandedElements.value.indexOf(id);
     if (i === -1) expandedElements.value.push(id);
     else expandedElements.value.splice(i, 1);
@@ -85,21 +84,14 @@ const toggleExpand = (id) => {
 
 const isExpanded = (id) => expandedElements.value.includes(id);
 
+// ✅ Функция открытия справочника для добавления поддетали
 const addChildItem = (parentElement) => {
-    if (!parentElement.children) parentElement.children = [];
-    const newId = crypto.randomUUID?.() ?? Date.now() + Math.random();
+    emit('open-catalog', parentElement.id);
 
-    parentElement.children.push({
-        id: newId,
-        name: 'Новый компонент #' + String(newId).slice(-4),
-        unit: 'шт', quantity: 1, children: []
-    });
-
+    // Убеждаемся, что родитель развернут, чтобы увидеть добавленный элемент
     if (!expandedElements.value.includes(parentElement.id)) {
         expandedElements.value.push(parentElement.id);
     }
-
-    emit('tree-changed'); // Отправляем данные наверх для сохранения
 };
 
 const removeItem = (index) => {
